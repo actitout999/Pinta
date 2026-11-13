@@ -42,9 +42,22 @@ public sealed class BlurSharpenTool : BaseBrushTool
 	}
 
 	/// <summary>
-	/// The largest radius (in pixels) of the blur kernel. The radius used for a stroke grows with the brush width.
+	/// The brush width used until the user picks one. Pinta's default width of a couple of pixels
+	/// is too small for blurring or sharpening to be noticeable.
 	/// </summary>
-	private const int MAX_KERNEL_RADIUS = 12;
+	private const int DEFAULT_BLUR_SHARPEN_BRUSH_WIDTH = 20;
+
+	/// <summary>
+	/// The smallest and largest radius (in pixels) of the blur kernel. The radius used for a stroke grows with the brush width.
+	/// </summary>
+	private const int MIN_KERNEL_RADIUS = 2;
+	private const int MAX_KERNEL_RADIUS = 20;
+
+	/// <summary>
+	/// The fraction of the brush radius, measured from the center, which is affected with full strength.
+	/// Beyond this the effect fades smoothly to nothing at the edge of the brush.
+	/// </summary>
+	private const double FULL_STRENGTH_FRACTION = 0.5;
 
 	/// <summary>
 	/// How strongly the difference between a pixel and its blurred version is amplified when sharpening.
@@ -74,6 +87,10 @@ public sealed class BlurSharpenTool : BaseBrushTool
 	public BlurSharpenTool (IServiceProvider services) : base (services)
 	{
 		workspace = services.GetService<IWorkspaceService> ();
+
+		// Use a larger default brush width, unless the user has already chosen one.
+		if (Settings.GetSetting (SettingNames.BrushWidth (this), -1) < 0)
+			BrushWidth = DEFAULT_BLUR_SHARPEN_BRUSH_WIDTH;
 
 		// Update cursor on zoom
 		workspace.ViewSizeChanged += (_, _) => {
@@ -185,7 +202,7 @@ public sealed class BlurSharpenTool : BaseBrushTool
 		// Make sure the pixel data of the stroke's source image is up to date before reading it.
 		undo_surface.Flush ();
 
-		int new_kernel_radius = Math.Clamp (BrushWidth / 8, 1, MAX_KERNEL_RADIUS);
+		int new_kernel_radius = Math.Clamp (BrushWidth / 4, MIN_KERNEL_RADIUS, MAX_KERNEL_RADIUS);
 		if (new_kernel_radius != kernel_radius || kernel.Length == 0) {
 			kernel_radius = new_kernel_radius;
 			kernel = CreateKernel (kernel_radius);
@@ -445,7 +462,8 @@ public sealed class BlurSharpenTool : BaseBrushTool
 
 	/// <summary>
 	/// Creates a table of the brush coverage (0-255), indexed by the distance from the center of the
-	/// brush as a fraction of the brush radius. The brush is fully opaque at the center and fades smoothly to nothing at the edge.
+	/// brush as a fraction of the brush radius. The brush is fully opaque in its center (see <see cref="FULL_STRENGTH_FRACTION"/>)
+	/// and then fades smoothly to nothing at the edge.
 	/// </summary>
 	private static byte[] CreateFalloffTable ()
 	{
@@ -453,7 +471,15 @@ public sealed class BlurSharpenTool : BaseBrushTool
 
 		for (int i = 0; i < table.Length; i++) {
 			double fraction = (double) i / (FALLOFF_RESOLUTION - 1);
-			table[i] = (byte) Math.Round (255 * 0.5 * (1 + Math.Cos (Math.PI * fraction)));
+
+			if (fraction <= FULL_STRENGTH_FRACTION) {
+				table[i] = 255;
+				continue;
+			}
+
+			// Fade out over the remaining distance to the edge of the brush.
+			double fade = (fraction - FULL_STRENGTH_FRACTION) / (1 - FULL_STRENGTH_FRACTION);
+			table[i] = (byte) Math.Round (255 * 0.5 * (1 + Math.Cos (Math.PI * fade)));
 		}
 
 		return table;
