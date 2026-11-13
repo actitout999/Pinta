@@ -6,6 +6,7 @@
 - hicolor/scalable/actions/join-bevel-symbolic.svg
 - hicolor/scalable/actions/join-miter-symbolic.svg
 - hicolor/scalable/actions/join-round-symbolic.svg
+- hicolor/scalable/actions/tool-blur-sharpen-symbolic.svg
 - hicolor/scalable/actions/tool-palette.svg
 - hicolor/scalable/actions/tool-select-lasso-freeform-symbolic.svg
 - hicolor/scalable/actions/tool-select-lasso-polygon-symbolic.svg

@@ -22,6 +22,9 @@ internal static class SettingNames
 
 	internal const string RECOLOR_TOLERANCE = "recolor-tolerance";
 
+	internal const string BLUR_SHARPEN_MODE = "blur-sharpen-mode";
+	internal const string BLUR_SHARPEN_STRENGTH = "blur-sharpen-strength";
+
 	internal const string GRADIENT_TYPE = "gradient-type";
 	internal const string GRADIENT_COLOR_MODE = "gradient-color-mode";
 
